@@ -1,0 +1,27 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Create or delete resources')
+        choice(name: 'ENV', choices: ['dev', 'test', 'prod'], description: 'Select the environment')
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/shamsheer6870/jenkins-parameters-concept.git'
+            }
+        }
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init -no-color'
+            }
+        }
+        stage('Terraform Execution') {
+            steps {
+                // Here we pass the Jenkins ENV parameter into the Terraform environment variable
+                sh "terraform ${params.ACTION} -var=\"environment=${params.ENV}\" -auto-approve -no-color"
+            }
+        }
+    }
+}
