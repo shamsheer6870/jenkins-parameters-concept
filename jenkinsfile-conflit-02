@@ -1,0 +1,30 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Create or delete resources')
+        choice(name: 'ENV', choices: ['dev', 'test', 'prod'], description: 'Select the environment')
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/shamsheer6870/jenkins-parameters-concept.git'
+            }
+        }
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init -no-color'
+            }
+        }
+        stage('Terraform Execution') {
+            steps {
+                // 1. Select the workspace (or create it if it is the first time)
+                sh "terraform workspace select ${params.ENV} || terraform workspace new ${params.ENV}"
+
+                // 2. Execute the Terraform command inside that isolated workspace
+                sh "terraform ${params.ACTION} -var=\"environment=${params.ENV}\" -auto-approve -no-color"
+            }
+        }
+    }
+}
