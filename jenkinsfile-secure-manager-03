@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Create or delete resources')
+        choice(name: 'ENV', choices: ['dev', 'test', 'prod'], description: 'Select the environment')
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/yourusername/jenkins-terraform-multienv.git'
+            }
+        }
+
+        stage('Fetch AWS Secret') {
+            steps {
+                // This reaches into AWS Secrets Manager and temporarily saves the value as MY_SECRET
+                withCredentials([string(credentialsId: 'jenkins-demo-secret', variable: 'MY_SECRET')]) {
+                    // We will echo it out to prove we have it. 
+                    // Jenkins is smart and will mask it with asterisks (***) in the logs so it stays safe!
+                    sh 'echo "The secret successfully fetched from AWS is: ${MY_SECRET}"'
+                }
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init -no-color'
+            }
+        }
+        // ... (Keep your Terraform Execution stage exactly the same)
+        stage('Terraform Execution') {
+            steps {
+                // 1. Select the workspace (or create it if it is the first time)
+                sh "terraform workspace select ${params.ENV} || terraform workspace new ${params.ENV}"
+
+                // 2. Execute the Terraform command inside that isolated workspace
+                sh "terraform ${params.ACTION} -var=\"environment=${params.ENV}\" -auto-approve -no-color"
+            }
+        }
+    }
+}
